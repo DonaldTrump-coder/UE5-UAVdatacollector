@@ -3,7 +3,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtGui import QImage
 import numpy as np
 import cv2
-from transer import inverse_UE_transform, get_GS_points
+from transer import inverse_UE_transform, get_GS_points, get_lla
 
 class Controller(QThread):
 
@@ -68,6 +68,8 @@ class Controller(QThread):
         y_ue = x_ned
         z_ue = -z_ned
         self.x_ue, self.y_ue, self.z_ue = inverse_UE_transform(x_ue, y_ue, z_ue)
+        self.lat, self.lon, self.h = get_lla(self.x_ue, self.y_ue, self.z_ue)
+        print(self.lat, self.lon, self.h)
 
     def take_image(self):
         png_image = self.client.simGetImage("0", airsim.ImageType.Scene)

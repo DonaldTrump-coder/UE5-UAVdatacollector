@@ -1,5 +1,6 @@
 import numpy as np
 import open3d as o3d
+import math
 
 X = 3440.0/100
 Y = -740.0/100
@@ -36,6 +37,38 @@ def inverse_UE_transform(x_world, y_world, z_world):
     P_world = np.array([y_world, -x_world, z_world])
     P_local = R.T @ (P_world - T)
     return float(P_local[0]), float(P_local[1]), float(P_local[2]) # left-handed to right-handed
+
+def get_lla(x, y, z):
+    a = 6378137.0
+    f = 1 / 298.257223563
+    e2 = 2*f - f*f
+
+    # 经度
+    lon = math.atan2(y, x)
+
+    # 中间量
+    p = math.sqrt(x*x + y*y)
+
+    # 初始纬度
+    lat = math.atan2(z, p * (1 - e2))
+
+    # 迭代求纬度（Bowring method）
+    while True:
+        N = a / math.sqrt(1 - e2 * math.sin(lat)**2)
+        lat_new = math.atan2(z + e2 * N * math.sin(lat), p)
+        if abs(lat_new - lat) < 1e-12:  # 收敛标准
+            break
+        lat = lat_new
+
+    # 高程
+    N = a / math.sqrt(1 - e2 * math.sin(lat)**2)
+    h = p / math.cos(lat) - N
+
+    # 转为角度
+    lat_deg = math.degrees(lat)
+    lon_deg = math.degrees(lon)
+
+    return lat_deg, lon_deg, h
 
 def get_GS_points(filename):
     pcd = o3d.io.read_point_cloud(filename)
