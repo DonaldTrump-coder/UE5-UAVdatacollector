@@ -5,6 +5,7 @@ from PyQt5.QtGui import QImage,QPixmap
 from pynput import keyboard
 from ui.PCDui import PointCloudWidget
 import numpy as np
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 class AirSimGUI(QWidget):
     def __init__(self):
@@ -22,8 +23,14 @@ class AirSimGUI(QWidget):
         vbox = QVBoxLayout(self.right_widget)
         self.coordinate=QLabel(self)
         self.pcd_widget = PointCloudWidget(self)
+
+        self.satellite_widget = QWebEngineView(self)
+        self.satellite_widget.setStyleSheet("background-color: lightblue;")
+        self.satellite_widget.setMinimumHeight(150)
+
         vbox.addWidget(self.coordinate, stretch=1)
         vbox.addWidget(self.pcd_widget, stretch=10)
+        vbox.addWidget(self.satellite_widget, stretch=10)
 
         hbox.addWidget(self.image, stretch=2)
         hbox.addWidget(self.right_widget, stretch=3)
