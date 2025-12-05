@@ -68,7 +68,10 @@ class Controller(QThread):
         y_ue = x_ned
         z_ue = -z_ned
         self.x_ue, self.y_ue, self.z_ue = inverse_UE_transform(x_ue, y_ue, z_ue)
-        self.lat, self.lon, self.h = get_lla(self.x_ue, self.y_ue, self.z_ue)
+        x_ue = self.x_ue + (-2192067.807058681)
+        y_ue = self.y_ue + (5182708.580194678)
+        z_ue = self.z_ue + (2992488.1635501203)
+        self.lat, self.lon, self.h = get_lla(x_ue, y_ue, z_ue)
         print(self.lat, self.lon, self.h)
 
     def take_image(self):
