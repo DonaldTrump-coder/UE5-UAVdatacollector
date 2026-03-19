@@ -4,6 +4,9 @@ from PyQt6.QtCore import pyqtSignal, QObject, QTimer
 class Controller(QObject):
     def __init__(self):
         super().__init__()
+        QTimer.singleShot(0, self.initialize_UAV)
+        
+    def initialize_UAV(self):
         try:
             self.client = airsim.MultirotorClient()
             self.client.confirmConnection()
@@ -16,10 +19,6 @@ class Controller(QObject):
         self.running=True
         self.landed=False
         
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_control)
-        self.timer.start(50)
-        
         self.forward = False
         self.backward = False
         self.left = False
@@ -28,6 +27,10 @@ class Controller(QObject):
         self.down = False
         self.turn_left = False
         self.turn_right = False
+        
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_control)
+        self.timer.start(50)
         
     def update_control(self):
         if self.running:
