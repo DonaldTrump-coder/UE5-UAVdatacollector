@@ -1,4 +1,7 @@
 __pycache__/
 build/
 *.egg-info/
-/data
+data/
+Scenes/
+.vscode/
+PixelStreamingTool/
