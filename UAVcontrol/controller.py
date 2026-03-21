@@ -94,7 +94,7 @@ class Controller(QObject):
             self.lock = True
             responses = self.client.simGetImages([
                 airsim.ImageRequest("0", airsim.ImageType.Scene, False, False),
-                airsim.ImageRequest("0", airsim.ImageType.DepthPerspective, True)
+                airsim.ImageRequest("0", airsim.ImageType.DepthPlanar, True)
             ])
             self.width = responses[0].width
             self.height = responses[0].height

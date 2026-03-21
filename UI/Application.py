@@ -1,12 +1,11 @@
-from tracemalloc import start
-
-from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QSizePolicy, QLineEdit
+from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QSizePolicy, QLineEdit, QFileDialog
 from PyQt6.QtCore import Qt, QUrl, QTimer, QThread
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from UAVcontrol.controller import Controller
 from UAVcontrol.recorder import Recorder
 import numpy as np
 from PyQt6.QtGui import QImage, QPixmap, QPainter, QColor, QPen
+import cv2
 
 class Datacollection(QMainWindow):
     def __init__(self, url):
@@ -28,11 +27,6 @@ class Datacollection(QMainWindow):
         main_layout.addWidget(information_widget, 1)
         
         status_widget = QWidget()
-        status_widget.setStyleSheet(
-        """
-        border: 1px solid black;
-        """
-        )
         self.img_widget = QWidget()
         information_layout.addWidget(status_widget, alignment=Qt.AlignmentFlag.AlignCenter)
         information_layout.addWidget(self.img_widget, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -48,17 +42,23 @@ class Datacollection(QMainWindow):
         imgs_layout.addWidget(self.depth_label)
         
         status_layout = QVBoxLayout(status_widget)
+        button_widget = QWidget()
+        button_layout = QHBoxLayout(button_widget)
         start_button = QPushButton("Start")
+        stop_button = QPushButton("Stop")
+        button_layout.addWidget(start_button)
+        button_layout.addWidget(stop_button)
         self.UAV_position_label = QLabel("UAV Position:")
         self.object_position_label = QLabel("Object Position:")
         scene_transformation_widget = QWidget()
         object_coor_widget = QWidget()
-        status_layout.addWidget(start_button)
+        status_layout.addWidget(button_widget)
         status_layout.addWidget(self.UAV_position_label)
         status_layout.addWidget(self.object_position_label)
         status_layout.addWidget(scene_transformation_widget)
         status_layout.addWidget(object_coor_widget)
         start_button.clicked.connect(self.start_recording)
+        stop_button.clicked.connect(self.stop_recording)
         
         scene_transformation_layout = QHBoxLayout(scene_transformation_widget)
         scene_transformation_label = QLabel("Starter Coordinate:")
@@ -69,6 +69,7 @@ class Datacollection(QMainWindow):
         scene_transformation_z_label = QLabel("z=")
         self.scene_transformation_z_edit = QLineEdit()
         self.scene_transformation_pushbutton = QPushButton("Input")
+        self.scene_transformation_pushbutton.clicked.connect(self.input_starter)
         
         scene_transformation_layout.addWidget(scene_transformation_label)
         scene_transformation_layout.addWidget(scene_transformation_x_label)
@@ -88,6 +89,7 @@ class Datacollection(QMainWindow):
         object_coor_z_label = QLabel("z=")
         self.object_coor_z_edit = QLineEdit()
         self.object_coor_pushbutton = QPushButton("Input")
+        self.object_coor_pushbutton.clicked.connect(self.input_object)
         
         object_coor_layout.addWidget(object_coor_label)
         object_coor_layout.addWidget(object_coor_x_label)
@@ -98,11 +100,25 @@ class Datacollection(QMainWindow):
         object_coor_layout.addWidget(self.object_coor_z_edit)
         object_coor_layout.addWidget(self.object_coor_pushbutton)
         
-        self.starter = (219460.015625, -290750.03125, 162.000488) # (x, y, z)
-        self.object_coor = (209905.375, -289765.21875, 721.391479) # (x, y, z)
+        self.starter = None # (x, y, z)
+        self.object_coor = None # (x, y, z)
         
         self.controller = None
         QTimer.singleShot(0, self.start_control)
+        
+    def input_starter(self):
+        x = float(self.scene_transformation_x_edit.text())
+        y = float(self.scene_transformation_y_edit.text())
+        z = float(self.scene_transformation_z_edit.text())
+        self.starter = (x, y, z)
+        self.scene_transformation_pushbutton.setEnabled(False)
+        
+    def input_object(self):
+        x = float(self.object_coor_x_edit.text())
+        y = float(self.object_coor_y_edit.text())
+        z = float(self.object_coor_z_edit.text())
+        self.object_coor = (x, y, z)
+        self.object_coor_pushbutton.setEnabled(False)
         
     def start_control(self):
         self.UAV_thread = QThread()
@@ -150,8 +166,20 @@ class Datacollection(QMainWindow):
             if self.recorder:
                 self.recorder.starter = self.starter
                 self.recorder.object_coor = self.object_coor
-                self.recorder.started = True
-                self.recorder.start()
+                folder_path = QFileDialog.getExistingDirectory(
+                    None,
+                    "Choose a Directory for Recording",
+                    "./data"
+                )
+                if folder_path:
+                    self.recorder.folder = folder_path
+                    self.recorder.started = True
+                    self.recorder.start()
+                    
+    def stop_recording(self):
+        if self.recorder:
+            if self.recorder.started:
+                self.recorder.stop()
         
     def position_got(self, x: float, y: float, z: float):
         self.UAV_position_label.setText(f"UAV Position: ({x:.2f}, {y:.2f}, {z:.2f})")
@@ -168,6 +196,7 @@ class Datacollection(QMainWindow):
         if self.recorder.started:
             self.recorder.rgb = img
         img = img[:, :, ::-1] # convert BGR to RGB
+        img = cv2.resize(img, (256, 144))
         h, w, ch = img.shape
         bytes_per_line = ch * w
         qimg = QImage(img.tobytes(), w, h, bytes_per_line, QImage.Format.Format_RGB888)
@@ -178,6 +207,7 @@ class Datacollection(QMainWindow):
             return
         if self.recorder.started:
             self.recorder.depth = img
+        img = cv2.resize(img, (256, 144))
         h, w = img.shape
         img_norm = (img - img.min()) / (img.max() - img.min() + 1e-8)
         img_uint8 = (img_norm * 255).astype('uint8')
